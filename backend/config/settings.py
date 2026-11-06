@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "apps.incidents",
     "apps.audit",
     "apps.imports",
+    "apps.dashboard",
 ]
 
 MIDDLEWARE = [

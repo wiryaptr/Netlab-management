@@ -1,115 +1,65 @@
-import React, { useState, useEffect } from 'react'
+import React from "react";
+import { AppProvider, useApp } from "./context";
+import { Dashboard } from "./views/Dashboard";
+import { AssetsView } from "./views/Assets";
+import { LocationsView } from "./views/Locations";
+import { IncidentsView } from "./views/Incidents";
+import { ImportsView } from "./views/Imports";
 
-export default function App() {
-  const [user, setUser] = useState<any>(null)
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [resource, setResource] = useState('locations')
-  const [file, setFile] = useState<File | null>(null)
-  const [importResult, setImportResult] = useState<any>(null)
+const Main: React.FC = () => {
+  const { view, setView, user, logout } = useApp();
 
-  const getCsrfToken = () => {
-    const match = document.cookie.match(/csrftoken=([^;]+)/)
-    return match ? match[1] : ''
-  }
+  if (!user) return <div style={{ padding: 40 }}>Harap login terlebih dahulu.</div>;
 
-  useEffect(() => {
-    fetch('/api/v1/auth/csrf/')
-      .then(res => res.json())
-      .catch(() => {})
-
-    fetch('/api/v1/auth/me/')
-      .then(res => res.ok ? res.json() : null)
-      .then(data => data && setUser(data))
-      .catch(() => {})
-  }, [])
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    try {
-      const csrf = getCsrfToken()
-      const res = await fetch('/api/v1/auth/login/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrf,
-        },
-        body: JSON.stringify({ username, password }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data.error?.message || 'Login gagal.')
-      } else {
-        setUser(data.user)
-      }
-    } catch {
-      setError('Terjadi kesalahan koneksi.')
-    }
-  }
-
-  const handleLogout = async () => {
-    await fetch('/api/v1/auth/logout/', { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() } })
-    setUser(null)
-  }
-
-  const handleImport = async (mode: 'preview' | 'commit') => {
-    if (!file) return
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('resource', resource)
-    formData.append('mode', mode)
-
-    const res = await fetch('/api/v1/imports/', {
-      method: 'POST',
-      headers: { 'X-CSRFToken': getCsrfToken() },
-      body: formData,
-    })
-    const data = await res.json()
-    setImportResult(data)
-  }
-
-  if (!user) {
-    return (
-      <div style={{ padding: 40, fontFamily: 'sans-serif', maxWidth: 400, margin: 'auto' }}>
-        <h2>NetLab Manager — Login</h2>
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <input placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
-          <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
-          <button type="submit">Masuk</button>
-        </form>
-      </div>
-    )
-  }
+  const menu = [
+    { id: "dashboard", label: "Dashboard" },
+    { id: "assets", label: "Aset" },
+    { id: "locations", label: "Lokasi" },
+    { id: "incidents", label: "Insiden" },
+    { id: "imports", label: "Impor CSV" },
+  ];
 
   return (
-    <div style={{ padding: 40, fontFamily: 'sans-serif', maxWidth: 800, margin: 'auto' }}>
-      <h1>NetLab Manager Dashboard</h1>
-      <p>Halo, <b>{user.username}</b> (Peran: {user.role})</p>
-      <button onClick={handleLogout}>Keluar</button>
-
-      <hr style={{ margin: '20px 0' }} />
-
-      <h3>Impor CSV</h3>
-      <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-        <select value={resource} onChange={e => setResource(e.target.value)}>
-          <option value="locations">Locations</option>
-          <option value="assets">Assets</option>
-          <option value="subnets">Subnets</option>
-          <option value="ip-addresses">IP Addresses</option>
-        </select>
-        <input type="file" accept=".csv" onChange={e => e.target.files && setFile(e.target.files[0])} />
-        <button onClick={() => handleImport('preview')}>Preview</button>
-        <button onClick={() => handleImport('commit')}>Commit</button>
-      </div>
-
-      {importResult && (
-        <pre style={{ background: '#f4f4f4', padding: 12, borderRadius: 4 }}>
-          {JSON.stringify(importResult, null, 2)}
-        </pre>
-      )}
+    <div style={{ display: "flex", minHeight: "100vh" }}>
+      <nav style={{ width: 200, background: "#333", color: "#fff", padding: 20 }}>
+        <h2>NetLab</h2>
+        <ul style={{ listStyle: "none", padding: 0 }}>
+          {menu.map((m) => (
+            <li key={m.id} style={{ marginBottom: 10 }}>
+              <button
+                onClick={() => setView(m.id as any)}
+                style={{
+                  background: view === m.id ? "#555" : "transparent",
+                  color: "#fff",
+                  border: "none",
+                  width: "100%",
+                  textAlign: "left",
+                  padding: 10,
+                  cursor: "pointer",
+                }}
+              >
+                {m.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+        <button onClick={logout} style={{ marginTop: 20, color: "red" }}>Keluar</button>
+      </nav>
+      <main style={{ flex: 1, padding: 40 }}>
+        {view === "dashboard" && <Dashboard />}
+        {view === "assets" && <AssetsView />}
+        {view === "locations" && <LocationsView />}
+        {view === "incidents" && <IncidentsView />}
+        {view === "imports" && <ImportsView />}
+      </main>
     </div>
-  )
+  );
+};
+
+export default function App() {
+  return (
+    <AppProvider>
+      <Main />
+    </AppProvider>
+  );
 }

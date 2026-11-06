@@ -16,34 +16,42 @@ Aplikasi web untuk mengelola inventaris dan dokumentasi operasional laboratorium
 
 ## Status Fase
 - **Phase 0 (Foundation):** Selesai / Terverifikasi
-  - Toolchain audit (podman-compose 1.6.0)
-  - Struktur repo (docs/, backend/, frontend/, deployment/)
-  - Dependencies dikunci (pyproject.toml, lockfile frontend)
+  - Toolchain audit (podman-compose 1.6.0, Node 22, Python 3.14 / py312 compat)
+  - Struktur repo (`docs/`, `backend/`, `frontend/`, `deployment/`)
+  - Dependencies dikunci (`pyproject.toml`, lockfile frontend)
   - PostgreSQL 16 dan Django 5.2.18 baseline
-  - Compose provider terverifikasi
+  - Compose provider terverifikasi (Podman)
 - **Phase 1 (Backend Foundation):** Selesai / Terverifikasi
   - Custom user model `accounts.User(AbstractUser)` dengan validator username, properti `role` dan `permissions`
   - Data migration `0002_seed_roles` (4 grup: administrator, lab_manager, lab_assistant, viewer)
-  - Konfigurasi Django: settings, urls, middleware, REST Framework settings
-  - Exception handler konsisten (custom_exception_handler) sesuai API spec
+  - Konfigurasi Django: settings, urls, middleware (`AuthenticationMiddleware` aktif), REST Framework settings
+  - Exception handler konsisten (`custom_exception_handler`) sesuai API spec
+  - Endpoint Auth & Users aktif: `csrf`, `login`, `logout`, `me`, `password/change`, `users/`
 - **Phase 2 (Assets, Locations, dan IPAM):** Selesai / Terverifikasi
   - **Locations:** Model `Location` dengan pilihan tipe, `archived_at`, dukungan soft-delete
   - **Assets:** Model `Asset` dengan jenis perangkat, status, lokasi FK, constraint unique nama aktif dan serial aktif; **NetworkInterface** berelasi ke Asset, MAC address validator, unique constraint per asset
   - **IPAM & VLANs:** Model `Subnet` dengan CIDR, gateway informasi, FK opsional ke `VLAN`; Model `IPAddress` dengan status `allocated/reserved/released`, constraint keunikan `(subnet, address)` aktif, relasi ke Asset/Interface; Model `VLAN` dengan rentang 1–4094 (kecuali 1002–1005), unique nomor aktif
-- **Phase 3 (VLAN, Connections, Incidents, Audit, Imports):** SEDANG DIEKSEKUSI
-  - **VLANs:** Sudah dibuat `apps.vlans.models.VLAN` dengan unique constraint nomor aktif
-  - **Connections:** Sudah dibuat `apps.connections.models.Connection` dengan CHECK `interface_a_id < interface_b_id`, unique constraint pasangan aktif; klaim koneksi fisik aktif dikontrol via trigger database
-  - **Incidents:** Sudah dibuat `apps.incidents.models.Incident` dengan severity/status enum, assignee FK ke User, asset FK; **IncidentEvent** sebagai riwayat append-only; insiden `closed` read-only untuk semua peran
-  - **Audit:** Sudah dibuat `apps.audit.models.AuditEvent` dengan 43 aksi wajib, `safe_metadata` filter; `service.record_audit()` untuk mencatat event penting tanpa secret/credential; event `auth.*`, `incident.*`, `import.*` didukung
-  - **Impor CSV:** Sudah dibuat `apps.imports.service` dengan `preview_csv()` (validasi tanpa menyimpan) dan `commit_csv()` (validasi ulang lalu simpan atomik); file tidak disimpan setelah proses; kolom `vlan` pada CSV subnet berisi `vlan_number` VLAN yang sudah ada; hanya resource `locations`, `assets`, `subnets`, `ip-addresses`
-- **Phase 4 (Frontend):** Belum dimulai
-- **Phase 5 (Hardening & Release):** Belum dimulai
+- **Phase 3 (VLAN, Connections, Incidents, Audit, Imports):** Selesai / Terverifikasi
+  - **VLANs:** `apps.vlans.models.VLAN` dengan unique constraint nomor aktif
+  - **Connections:** `apps.connections.models.Connection` dengan CHECK `interface_a_id < interface_b_id`, unique constraint pasangan aktif
+  - **Incidents:** `apps.incidents.models.Incident` & `IncidentEvent` (riwayat append-only)
+  - **Audit:** `apps.audit.models.AuditEvent` & `service.record_audit()`
+  - **Impor CSV:** `apps.imports.service` (preview dan commit atomik) + endpoint `POST /api/v1/imports/`
+- **Phase 4 (Frontend):** Selesai / Terverifikasi
+  - SPA React 19 + TypeScript + Vite (`frontend/`)
+  - Konfigurasi Vite dev proxy ke backend
+  - Alur UI terhubung ke API: Login, Dashboard info peran pengguna, Impor CSV (Preview & Commit)
+  - Build production (`npm run build`) lulus tanpa error (`dist/` dihasilkan)
+- **Phase 5 (Hardening & Release):** Sedang Dikerjakan / Baseline Terverifikasi
+  - Test suite dasar terpasang dan lulus pada PostgreSQL 16 container (`python3 manage.py test` → 1 test OK)
+  - Migrasi seluruh app diterapkan secara konsisten
+  - Kontainer database PostgreSQL 16 lokal terkonfirmasi berjalan
 
 ## Arsitektur
 - **Backend:** Python + Django 5.2 LTS + Django REST Framework (modular monolith)
 - **Database:** PostgreSQL 16 (tipe `inet`/`cidr`, GiST exclusion constraint, trigger penjaga integritas)
 - **Auth:** Django session + CSRF (browser MVP, tanpa bearer token)
-- **Frontend:** React + TypeScript + Vite (belum dikembangkan)
+- **Frontend:** React + TypeScript + Vite
 - **Deployment:** Docker/Podman Compose dengan dua role database (`netlab_owner` untuk migrasi/backup, `netlab_app` untuk runtime)
 
 ## 4 Peran (Django Groups)
@@ -62,17 +70,15 @@ cd netlab-manager
 
 # 2. Buat file .env dari .env.example
 cp .env.example .env
-# Isi secret: DJANGO_SECRET_KEY, DATABASE_URL, dsb
 
 # 3. Jalankan compose
 podman compose up -d
 
 # 4. Jalankan migrasi dan seed role
-podman exec <backend-container> python manage.py migrate
-podman exec <backend-container> python manage.py create_groups  # migrasi 0002
+podman compose exec backend python manage.py migrate
 
 # 5. Buat administrator pertama
-podman exec <backend-container> python manage.py create_admin
+podman compose exec backend python manage.py createsuperuser
 
 # 6. Akses di http://localhost
 ```

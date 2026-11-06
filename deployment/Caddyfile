@@ -1,0 +1,15 @@
+{
+  admin off
+}
+
+:80 {
+  root * /srv
+  route {
+    # Forward API requests to backend
+    reverse_proxy /api/* backend:8000
+
+    # Fallback to index.html for SPA routing
+    try_files {path} /index.html
+    file_server
+  }
+}
