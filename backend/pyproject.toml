@@ -1,0 +1,29 @@
+[project]
+name = "netlab-manager"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "Django==5.2.18",
+    "djangorestframework==3.18.3",
+    "psycopg-binary==3.3.6",
+    "drf-spectacular==0.30.0",
+    "django-filter==26.2",
+    "gunicorn==26.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff==0.16.10",
+]
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E501", "B008"]

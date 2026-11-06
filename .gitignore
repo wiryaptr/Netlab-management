@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+.env
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Database / OS
+*.db
+*.sqlite3
+.DS_Store
+Thumbs.db
+
+# Deployment
+caddy_data/
+caddy_config/
+netlab_db_data/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

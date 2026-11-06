@@ -1,0 +1,52 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: netlab
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: change_me_postgres_password
+    volumes:
+      - netlab_db_data:/var/lib/postgresql/data
+    networks:
+      - db
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - db
+    networks:
+      - app
+      - db
+
+  reverse-proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deployment/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./frontend/dist:/srv:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+    networks:
+      - edge
+      - app
+
+networks:
+  edge:
+  app:
+  db:
+    internal: true
+
+volumes:
+  netlab_db_data:
+  caddy_data:
+  caddy_config:
